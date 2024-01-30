@@ -1,0 +1,46 @@
+version: "3"
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+      - ZOOKEEPER_TICK_TIME=2000
+    healthcheck:
+      test: nc -z localhost 2181 || exit 0
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+        restart: true
+    environment:
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+    # command: /bin/kafka-topics --create --topic demo-topic --bootstrap-server kafka:9092
+
+  kafka_consumer:
+    build:
+      dockerfile: .\KafkaConsumer\Dockerfile
+    container_name: kafka_consumer
+    ports:
+      - 8080:5000
+    environment:
+      - KAFKA_ADDRESS=kafka:9092
+
+  kafka_producer:
+    build:
+      dockerfile: .\KafkaProducer\Dockerfile
+    container_name: kafka_producer
+    ports:
+      - 8081:5000
+    environment:
+      - KAFKA_ADDRESS=kafka:9092
